@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 16px;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .symbol-wrapper {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #09090B;
+      line-height: 1;
+    }
+    .title .accent {
+      color: #7C3AED;
+    }
+    .subtitle {
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748B;
+      margin-top: 5px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container" id="logo">
+    <div class="symbol-wrapper">
+      <svg viewBox="0 0 48 46" width="44" height="44" fill="none">
+        <path fill="#09090B" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" />
+        <path fill="#27272A" opacity="0.3" d="M10.013.474h28.894l-7.48 10.471H17.493L10.013.474z" />
+      </svg>
+    </div>
+    <div class="text-container">
+      <div class="title">ACCESS<span class="accent">CORE</span></div>
+      <div class="subtitle">Enterprise Workflow</div>
+    </div>
+  </div>
+</body>
+</html>
