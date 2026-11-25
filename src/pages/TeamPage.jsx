@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Plus, Search, Mail, Phone, MapPin,
   Shield, CheckCircle2, XCircle, Edit, Trash2,
-  Calendar, Briefcase, Award, Filter, ArrowUpRight, Download
+  Calendar, Briefcase, Award, Filter, ArrowUpRight, Download,
+  Copy, Check, ExternalLink
 } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -27,6 +28,14 @@ export default function TeamPage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [selectedProfile, setSelectedProfile] = useState(null)
+  const [copiedEmail, setCopiedEmail] = useState(false)
+
+  const handleCopyEmail = (email) => {
+    navigator.clipboard?.writeText(email)
+    setCopiedEmail(true)
+    toast.success('Email address copied to clipboard')
+    setTimeout(() => setCopiedEmail(false), 2000)
+  }
 
   const [formData, setFormData] = useState({
     name: '',
@@ -349,49 +358,103 @@ export default function TeamPage() {
           }
         >
           <div className="space-y-4 text-xs">
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <Avatar name={selectedProfile.name} size="lg" />
-              <div>
-                <h3 className="text-base font-bold text-[#1E293B]">{selectedProfile.name}</h3>
-                <p className="text-xs text-slate-500">{selectedProfile.title} • {selectedProfile.department}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge color={ROLE_COLORS[selectedProfile.role]}>{selectedProfile.role}</Badge>
-                  <Badge color={selectedProfile.status === 'Active' ? 'green' : 'slate'} dot>{selectedProfile.status}</Badge>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <Avatar name={selectedProfile.name} size="lg" />
+                <div>
+                  <h3 className="text-base font-bold text-[#1E293B] flex items-center gap-2">
+                    {selectedProfile.name}
+                    <span className="text-[11px] font-mono text-slate-400 font-normal">({selectedProfile.id})</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">{selectedProfile.title} • {selectedProfile.department}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge color={ROLE_COLORS[selectedProfile.role]}>{selectedProfile.role}</Badge>
+                    <Badge color={selectedProfile.status === 'Active' ? 'green' : 'slate'} dot>{selectedProfile.status}</Badge>
+                    <Badge color="purple">
+                      {selectedProfile.role === 'Admin' ? 'Level 3 • Root Access' : selectedProfile.role === 'Team Lead' ? 'Level 2 • Lead Access' : 'Level 1 • Standard Access'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Operational Workload Metrics */}
+            <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="text-center">
+                <span className="text-[10px] uppercase text-slate-400 font-semibold block">Active Requests</span>
+                <span className="text-base font-bold text-slate-800">{selectedProfile.assignedRequests || 0}</span>
+              </div>
+              <div className="text-center border-x border-slate-200">
+                <span className="text-[10px] uppercase text-slate-400 font-semibold block">Active Tasks</span>
+                <span className="text-base font-bold text-slate-800">{selectedProfile.assignedTasks || 0}</span>
+              </div>
+              <div className="text-center">
+                <span className="text-[10px] uppercase text-slate-400 font-semibold block">SLA Compliance</span>
+                <span className="text-base font-bold text-emerald-600">99.2%</span>
+              </div>
+            </div>
+
+            {/* Contact details with action buttons */}
             <div className="grid grid-cols-2 gap-3 text-slate-600">
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase">Work Email</span>
-                <span className="font-medium flex items-center gap-1 mt-0.5"><Mail size={12} /> {selectedProfile.email}</span>
+              <div className="p-2.5 rounded-lg border border-slate-100 bg-white">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Work Email</span>
+                  <button
+                    onClick={() => handleCopyEmail(selectedProfile.email)}
+                    className="text-[10px] text-[#6D4AFF] hover:underline flex items-center gap-0.5"
+                    title="Copy email"
+                  >
+                    {copiedEmail ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                    {copiedEmail ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <a href={`mailto:${selectedProfile.email}`} className="font-medium text-slate-800 hover:text-[#6D4AFF] flex items-center gap-1">
+                  <Mail size={12} className="text-slate-400" /> {selectedProfile.email}
+                </a>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase">Phone Number</span>
-                <span className="font-medium flex items-center gap-1 mt-0.5"><Phone size={12} /> {selectedProfile.phone}</span>
+
+              <div className="p-2.5 rounded-lg border border-slate-100 bg-white">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Direct Phone</span>
+                  <a
+                    href={`tel:${selectedProfile.phone}`}
+                    className="text-[10px] text-[#6D4AFF] hover:underline flex items-center gap-0.5"
+                  >
+                    <ExternalLink size={11} /> Call
+                  </a>
+                </div>
+                <span className="font-medium text-slate-800 flex items-center gap-1">
+                  <Phone size={12} className="text-slate-400" /> {selectedProfile.phone}
+                </span>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase">Assigned Office</span>
-                <span className="font-medium flex items-center gap-1 mt-0.5"><MapPin size={12} /> {selectedProfile.location}</span>
+
+              <div className="p-2.5 rounded-lg border border-slate-100 bg-white">
+                <span className="text-[10px] text-slate-400 block uppercase font-semibold mb-0.5">Assigned Office</span>
+                <span className="font-medium text-slate-800 flex items-center gap-1">
+                  <MapPin size={12} className="text-slate-400" /> {selectedProfile.location}
+                </span>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase">Tenure Date</span>
-                <span className="font-medium flex items-center gap-1 mt-0.5"><Calendar size={12} /> {formatDate(selectedProfile.joinDate)}</span>
+
+              <div className="p-2.5 rounded-lg border border-slate-100 bg-white">
+                <span className="text-[10px] text-slate-400 block uppercase font-semibold mb-0.5">Tenure Started</span>
+                <span className="font-medium text-slate-800 flex items-center gap-1">
+                  <Calendar size={12} className="text-slate-400" /> {formatDate(selectedProfile.joinDate)}
+                </span>
               </div>
             </div>
 
             <div>
-              <span className="text-[10px] text-slate-400 block uppercase mb-1">Executive Summary</span>
-              <p className="p-2.5 rounded bg-slate-50 text-slate-600 leading-relaxed">
+              <span className="text-[10px] text-slate-400 block uppercase font-semibold mb-1">Executive Summary</span>
+              <p className="p-2.5 rounded-lg bg-slate-50 text-slate-600 leading-relaxed border border-slate-100">
                 {selectedProfile.bio}
               </p>
             </div>
 
             <div>
-              <span className="text-[10px] text-slate-400 block uppercase mb-1.5">Core Competencies & Skills</span>
+              <span className="text-[10px] text-slate-400 block uppercase font-semibold mb-1.5">Core Competencies & Skills</span>
               <div className="flex flex-wrap gap-1.5">
                 {(selectedProfile.skills || []).map(skill => (
-                  <span key={skill} className="px-2 py-0.5 rounded-md bg-blue-100 text-[#6D4AFF] font-medium text-[11px]">
+                  <span key={skill} className="px-2 py-0.5 rounded-md bg-[#F4F2FF] text-[#6D4AFF] border border-[#EDE8FA] font-medium text-[11px]">
                     {skill}
                   </span>
                 ))}
