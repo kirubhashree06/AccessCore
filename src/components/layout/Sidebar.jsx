@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -18,6 +18,11 @@ import {
 import { useLocalStorage } from '../../hooks/useLocalStorage'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../context/AuthContext'
+import { useRequests } from '../../context/RequestsContext'
+import { useTasks } from '../../context/TasksContext'
+import { useBugs } from '../../context/BugsContext'
+import { useApprovals } from '../../context/ApprovalsContext'
+import { useNotifications } from '../../context/NotificationsContext'
 import Avatar from '../ui/Avatar'
 import { cn } from '../../utils/helpers'
 import AccessCoreLogo from '../common/AccessCoreLogo'
@@ -49,6 +54,34 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
   const isMobile = useIsMobile(768)
   const location = useLocation()
   const { user } = useAuth()
+  const { requests = [] } = useRequests() || {}
+  const { tasks = [] } = useTasks() || {}
+  const { bugs = [] } = useBugs() || {}
+  const { approvals = [] } = useApprovals() || {}
+  const { unreadCount = 0 } = useNotifications() || {}
+
+  // Global keyboard shortcut Ctrl+B / Cmd+B for instant sidebar collapse toggle
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        setCollapsed(c => !c)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setCollapsed])
+
+  // Live operational badge counters across modules
+  const badgeCounts = useMemo(() => {
+    return {
+      '/requests': requests.filter(r => !['Resolved', 'Closed', 'Cancelled', 'Rejected'].includes(r.status)).length,
+      '/tasks': tasks.filter(t => t.status !== 'COMPLETED').length,
+      '/bugs': bugs.filter(b => !['CLOSED', 'FIXED'].includes(b.status)).length,
+      '/approvals': approvals.filter(a => a.status === 'PENDING').length,
+      '/notifications': unreadCount,
+    }
+  }, [requests, tasks, bugs, approvals, unreadCount])
 
   return (
     <>
@@ -117,6 +150,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
                     path === '/'
                       ? location.pathname === '/'
                       : location.pathname.startsWith(path)
+                  const count = badgeCounts[path]
 
                   return (
                     <li key={path}>
@@ -134,13 +168,18 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
                             : 'text-[#CBD5E1] hover:text-white hover:bg-[#1E1B2E]'
                         )}
                       >
-                        <Icon
-                          size={18}
-                          className={cn(
-                            'shrink-0 transition-colors',
-                            isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#A78BFA]'
+                        <div className="relative shrink-0 flex items-center justify-center">
+                          <Icon
+                            size={18}
+                            className={cn(
+                              'shrink-0 transition-colors',
+                              isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#A78BFA]'
+                            )}
+                          />
+                          {collapsed && !mobileOpen && count > 0 && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#6D4AFF] ring-2 ring-[#11111B]" />
                           )}
-                        />
+                        </div>
                         <AnimatePresence>
                           {(!collapsed || mobileOpen) && (
                             <motion.span
@@ -148,22 +187,41 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: -6 }}
                               transition={{ duration: 0.15 }}
-                              className="whitespace-nowrap truncate"
+                              className="whitespace-nowrap truncate flex-1"
                             >
                               {label}
                             </motion.span>
                           )}
                         </AnimatePresence>
 
+                        {/* Live Counter Badge for expanded mode */}
+                        {(!collapsed || mobileOpen) && count > 0 && (
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 tabular-nums transition-colors',
+                              isActive
+                                ? 'bg-white/20 text-white'
+                                : 'bg-[#1E1B2E] text-[#A78BFA] group-hover:bg-[#6D4AFF]/20 group-hover:text-white'
+                            )}
+                          >
+                            {count}
+                          </span>
+                        )}
+
                         {/* Tooltip for desktop collapsed */}
                         {collapsed && !mobileOpen && (
                           <span className={cn(
-                            'absolute left-full ml-3 px-2.5 py-1 rounded-md z-50',
+                            'absolute left-full ml-3 px-2.5 py-1 rounded-md z-50 flex items-center gap-2',
                             'bg-[#181824] text-white text-xs whitespace-nowrap font-medium',
                             'opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none',
                             'border border-[#232136] shadow-lg'
                           )}>
-                            {label}
+                            <span>{label}</span>
+                            {count > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full bg-[#6D4AFF] text-white text-[10px] font-bold">
+                                {count}
+                              </span>
+                            )}
                           </span>
                         )}
                       </NavLink>
@@ -201,18 +259,26 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
             <button
               onClick={() => setCollapsed(c => !c)}
               className={cn(
-                'flex items-center justify-center gap-2 w-full px-3 py-1.5 rounded-lg',
+                'flex items-center justify-between w-full px-3 py-1.5 rounded-lg',
                 'text-[#94A3B8] hover:text-white hover:bg-[#1E1B2E]',
                 'text-xs transition-colors duration-150 cursor-pointer'
               )}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+              title="Toggle sidebar (Ctrl+B)"
             >
               {collapsed ? (
-                <ChevronRight size={16} className="text-[#A78BFA]" />
+                <div className="w-full flex justify-center">
+                  <ChevronRight size={16} className="text-[#A78BFA]" />
+                </div>
               ) : (
                 <>
-                  <ChevronLeft size={16} className="text-[#A78BFA]" />
-                  <span>Collapse navigation</span>
+                  <div className="flex items-center gap-2">
+                    <ChevronLeft size={16} className="text-[#A78BFA]" />
+                    <span>Collapse navigation</span>
+                  </div>
+                  <kbd className="text-[10px] font-mono text-[#64748B] bg-[#181824] px-1.5 py-0.5 rounded border border-[#232136]">
+                    Ctrl B
+                  </kbd>
                 </>
               )}
             </button>
