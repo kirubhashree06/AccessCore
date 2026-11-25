@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import Breadcrumbs from './Breadcrumbs'
@@ -11,6 +11,28 @@ export default function AppLayout() {
   const [collapsed] = useLocalStorage('ac-sidebar-collapsed', false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const isMobile = useIsMobile(768)
+  const location = useLocation()
+
+  // Auto-close mobile drawer on route change
+  const [prevPath, setPrevPath] = useState(location.pathname)
+  if (prevPath !== location.pathname) {
+    setPrevPath(location.pathname)
+    if (mobileSidebarOpen) {
+      setMobileSidebarOpen(false)
+    }
+  }
+
+  // Prevent background scrolling when mobile navigation drawer is active
+  useEffect(() => {
+    if (isMobile && mobileSidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobile, mobileSidebarOpen])
 
   return (
     <div className="min-h-screen bg-[#F4F2FF] text-[#1E1B2E] transition-colors duration-150">
@@ -27,7 +49,7 @@ export default function AppLayout() {
           marginLeft: isMobile ? 0 : (collapsed ? 68 : 240)
         }}
       >
-        <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
+        <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
           <Breadcrumbs />
           <Outlet />
         </div>
