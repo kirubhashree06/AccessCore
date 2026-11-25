@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   ClipboardList, CheckSquare, Bug, CheckCircle,
   Clock, ShieldAlert, ArrowUpRight, TrendingUp,
   Calendar, CheckCircle2, AlertTriangle, Activity,
-  PlusCircle, Zap, ArrowRight, ShieldCheck, UserCheck, RefreshCw, Sparkles
+  PlusCircle, Zap, ArrowRight, ShieldCheck, UserCheck, RefreshCw, Sparkles, Download, Check
 } from 'lucide-react'
 import Card, { CardHeader } from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -28,15 +28,36 @@ const SLA_DATA = [
   { service: 'General IT Inquiries', compliance: 94.8, target: 95.0, status: 'Needs Attention' },
 ]
 
-const WEEKLY_TREND = [
-  { day: 'Mon', requests: 12, resolved: 10, tasks: 14 },
-  { day: 'Tue', requests: 19, resolved: 15, tasks: 18 },
-  { day: 'Wed', requests: 15, resolved: 14, tasks: 12 },
-  { day: 'Thu', requests: 22, resolved: 18, tasks: 20 },
-  { day: 'Fri', requests: 18, resolved: 19, tasks: 16 },
-  { day: 'Sat', requests: 6, resolved: 7, tasks: 5 },
-  { day: 'Sun', requests: 4, resolved: 4, tasks: 3 },
-]
+const TREND_MAP = {
+  Today: [
+    { day: '08:00', requests: 3, resolved: 2, tasks: 4 },
+    { day: '10:00', requests: 7, resolved: 5, tasks: 6 },
+    { day: '12:00', requests: 5, resolved: 6, tasks: 5 },
+    { day: '14:00', requests: 9, resolved: 8, tasks: 7 },
+    { day: '16:00', requests: 6, resolved: 7, tasks: 5 },
+    { day: '18:00', requests: 2, resolved: 3, tasks: 2 },
+  ],
+  '7d': [
+    { day: 'Mon', requests: 12, resolved: 10, tasks: 14 },
+    { day: 'Tue', requests: 19, resolved: 15, tasks: 18 },
+    { day: 'Wed', requests: 15, resolved: 14, tasks: 12 },
+    { day: 'Thu', requests: 22, resolved: 18, tasks: 20 },
+    { day: 'Fri', requests: 18, resolved: 19, tasks: 16 },
+    { day: 'Sat', requests: 6, resolved: 7, tasks: 5 },
+    { day: 'Sun', requests: 4, resolved: 4, tasks: 3 },
+  ],
+  '30d': [
+    { day: 'Week 1', requests: 84, resolved: 78, tasks: 92 },
+    { day: 'Week 2', requests: 96, resolved: 91, tasks: 104 },
+    { day: 'Week 3', requests: 88, resolved: 85, tasks: 90 },
+    { day: 'Week 4', requests: 102, resolved: 98, tasks: 110 },
+  ],
+  Quarter: [
+    { day: 'Month 1', requests: 340, resolved: 325, tasks: 380 },
+    { day: 'Month 2', requests: 395, resolved: 380, tasks: 410 },
+    { day: 'Month 3', requests: 420, resolved: 415, tasks: 435 },
+  ],
+}
 
 const CATEGORY_DISTRIBUTION = [
   { name: 'Hardware', value: 35, color: '#6D4AFF' },
@@ -53,6 +74,39 @@ export default function DashboardPage() {
   const { bugs = [] } = useBugs() || {}
   const { approvals = [] } = useApprovals() || {}
   const [dateRange, setDateRange] = useState('7d')
+  const [downloaded, setDownloaded] = useState(false)
+
+  // Dynamic Trend based on active date range
+  const currentTrend = useMemo(() => {
+    return TREND_MAP[dateRange] || TREND_MAP['7d']
+  }, [dateRange])
+
+  // Metric export handler
+  const handleExportMetrics = () => {
+    const report = {
+      project: 'ACCESSCORE Enterprise Workflow',
+      generatedAt: new Date().toISOString(),
+      role: user?.role || 'Admin',
+      dateRange,
+      kpiSummary: {
+        openRequests: requests.filter(r => !['Resolved', 'Closed', 'Cancelled', 'Rejected'].includes(r.status)).length,
+        activeTasks: tasks.filter(t => t.status !== 'COMPLETED').length,
+        openBugs: bugs.filter(b => !['CLOSED', 'FIXED'].includes(b.status)).length,
+        pendingApprovals: approvals.filter(a => a.status === 'PENDING').length,
+      },
+      slaCompliance: SLA_DATA,
+      velocityTrend: currentTrend,
+    }
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `accesscore-metrics-${dateRange.toLowerCase()}-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setDownloaded(true)
+    setTimeout(() => setDownloaded(false), 2000)
+  }
 
   // Current persona detection
   const currentRole = user?.role || 'Admin'
@@ -441,6 +495,14 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportMetrics}
+            iconLeft={downloaded ? <Check size={13} className="text-emerald-500" /> : <Download size={13} />}
+          >
+            {downloaded ? 'Exported' : 'Export Metrics'}
+          </Button>
           <Link to="/requests">
             <Button variant="primary" size="sm" iconRight={<ArrowUpRight size={13} />}>
               Create Request
@@ -529,7 +591,7 @@ export default function DashboardPage() {
           />
           <div className="h-[270px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={WEEKLY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={currentTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorReq" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6D4AFF" stopOpacity={0.35} />
