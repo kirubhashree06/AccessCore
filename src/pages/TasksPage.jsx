@@ -2,10 +2,9 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckSquare, Plus, Search, Filter, Kanban, List,
-  Calendar, User, Clock, CheckCircle2, ChevronRight,
-  MoreVertical, Edit, Trash2, ArrowRight, MessageSquare, AlertCircle
+  Calendar, User, Clock, CheckCircle2,
+  Edit, Trash2, ArrowRight, MessageSquare, AlertTriangle
 } from 'lucide-react'
-import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
@@ -20,6 +19,24 @@ import {
 } from '../data/tasksData'
 import { formatDate } from '../utils/helpers'
 
+const getDueDateBadge = (dueDate, status) => {
+  if (status === 'COMPLETED') return { label: 'Resolved', color: 'green' }
+  const todayStr = '2026-11-25'
+  if (dueDate < todayStr) return { label: 'Overdue', color: 'red' }
+  if (dueDate === todayStr) return { label: 'Due Today', color: 'amber' }
+  return { label: 'Scheduled', color: 'purple' }
+}
+
+const getInitialTaskForm = () => ({
+  title: '',
+  description: '',
+  priority: 'Medium',
+  assignee: 'James Wilson',
+  department: 'Engineering',
+  dueDate: '2026-12-05',
+  estimatedHours: 8,
+})
+
 export default function TasksPage() {
   const { tasks, createTask, updateTask, changeTaskStatus, deleteTask, addComment, toggleSubtask } = useTasks()
   const { toasts, toast, dismiss } = useToast()
@@ -33,15 +50,8 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState(null)
   const [newComment, setNewComment] = useState('')
 
-  // Form State
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'Medium',
-    assignee: 'James Wilson',
-    department: 'Engineering',
-    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-  })
+  // Form State with pure initialization
+  const [formData, setFormData] = useState(getInitialTaskForm)
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
@@ -64,14 +74,7 @@ export default function TasksPage() {
     createTask(formData)
     toast.success('Task created successfully')
     setCreateModalOpen(false)
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'Medium',
-      assignee: 'James Wilson',
-      department: 'Engineering',
-      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-    })
+    setFormData(getInitialTaskForm())
   }
 
   const handleEditSubmit = (e) => {
@@ -264,9 +267,14 @@ export default function TasksPage() {
                           <Avatar name={task.assignee} size="xs" />
                           <span className="truncate">{task.assignee}</span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar size={11} /> {formatDate(task.dueDate)}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={11} /> {formatDate(task.dueDate)}
+                          </span>
+                          <Badge color={getDueDateBadge(task.dueDate, task.status).color} className="text-[9px] px-1 py-0.2">
+                            {getDueDateBadge(task.dueDate, task.status).label}
+                          </Badge>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -294,6 +302,7 @@ export default function TasksPage() {
                   <th className="py-3 px-4">Priority</th>
                   <th className="py-3 px-4">Assignee</th>
                   <th className="py-3 px-4">Due Date</th>
+                  <th className="py-3 px-4">Schedule</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -328,6 +337,11 @@ export default function TasksPage() {
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap text-slate-500">
                       {formatDate(task.dueDate)}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <Badge color={getDueDateBadge(task.dueDate, task.status).color}>
+                        {getDueDateBadge(task.dueDate, task.status).label}
+                      </Badge>
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
