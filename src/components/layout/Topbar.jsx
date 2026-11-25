@@ -1,5 +1,7 @@
-import { Bell, Search, Moon, Sun, ChevronDown, Menu, LogOut, UserCheck } from 'lucide-react'
-import { useTheme } from '../../context/ThemeContext'
+import {
+  Bell, Search, ChevronDown, Menu, LogOut,
+  Plus, ClipboardList, CheckSquare, Bug
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationsContext'
 import { useLocalStorage } from '../../hooks/useLocalStorage'
@@ -16,20 +18,24 @@ import AccessCoreLogo from '../common/AccessCoreLogo'
 
 export default function Topbar({ onToggleMobileSidebar }) {
   const isMobile = useIsMobile(768)
-  const { theme, toggleTheme } = useTheme()
   const { user, logout, switchRole } = useAuth()
   const { unreadCount = 0 } = useNotifications() || {}
   const [sidebarCollapsed] = useLocalStorage('ac-sidebar-collapsed', false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const userMenuRef = useRef(null)
+  const createMenuRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     const handler = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setUserMenuOpen(false)
+      }
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target)) {
+        setCreateMenuOpen(false)
       }
     }
     const onKey = (e) => {
@@ -99,6 +105,61 @@ export default function Topbar({ onToggleMobileSidebar }) {
 
         {/* Right: actions */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Operational System Health Pill */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium select-none">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Systems Operational</span>
+          </div>
+
+          {/* Quick Create Dropdown */}
+          <div className="relative" ref={createMenuRef}>
+            <button
+              onClick={() => setCreateMenuOpen(o => !o)}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#6D4AFF] text-white hover:bg-[#5B3CE6] text-xs font-semibold shadow-xs shadow-[#6D4AFF]/20 transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Create</span>
+              <ChevronDown size={12} className="opacity-80" />
+            </button>
+
+            <AnimatePresence>
+              {createMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                  transition={{ duration: 0.14 }}
+                  className="absolute right-0 top-full mt-1.5 w-48 py-1 z-50 bg-white border border-[#EDE8FA] rounded-xl shadow-xl text-xs"
+                >
+                  <button
+                    onClick={() => { setCreateMenuOpen(false); navigate('/requests') }}
+                    className="w-full text-left px-3 py-2 text-[#1E1B2E] hover:bg-[#F4F2FF] hover:text-[#6D4AFF] flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <ClipboardList size={14} className="text-[#6D4AFF]" />
+                    <span>New Service Request</span>
+                  </button>
+                  <button
+                    onClick={() => { setCreateMenuOpen(false); navigate('/tasks') }}
+                    className="w-full text-left px-3 py-2 text-[#1E1B2E] hover:bg-[#F4F2FF] hover:text-[#6D4AFF] flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <CheckSquare size={14} className="text-[#6D4AFF]" />
+                    <span>Create Team Task</span>
+                  </button>
+                  <button
+                    onClick={() => { setCreateMenuOpen(false); navigate('/bugs') }}
+                    className="w-full text-left px-3 py-2 text-[#1E1B2E] hover:bg-[#F4F2FF] hover:text-red-600 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Bug size={14} className="text-red-500" />
+                    <span>Log System Defect</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Notifications */}
           <button
             onClick={() => navigate('/notifications')}
