@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bug, Plus, Search, Filter, ShieldAlert,
   Calendar, User, AlertCircle, ArrowRight, MessageSquare,
-  Paperclip, CheckCircle2, ChevronRight, Server, Trash2
+  Paperclip, CheckCircle2, ChevronRight, Server, Trash2,
+  Download, Copy, Check
 } from 'lucide-react'
-import Card, { CardHeader } from '../components/ui/Card'
+import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
@@ -21,7 +22,7 @@ import {
 import { formatDate } from '../utils/helpers'
 
 export default function BugsPage() {
-  const { bugs, reportBug, updateBug, changeBugStatus, assignDeveloper, addComment, deleteBug } = useBugs()
+  const { bugs, reportBug, changeBugStatus, assignDeveloper, addComment, deleteBug } = useBugs()
   const { toasts, toast, dismiss } = useToast()
 
   const [search, setSearch] = useState('')
@@ -31,6 +32,38 @@ export default function BugsPage() {
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [selectedBug, setSelectedBug] = useState(null)
   const [newComment, setNewComment] = useState('')
+  const [copiedBrief, setCopiedBrief] = useState(false)
+
+  const exportBugsCsv = () => {
+    const headers = ['Defect ID', 'Title', 'Severity', 'Environment', 'Status', 'Assigned To', 'Reported By', 'Created At']
+    const rows = filteredBugs.map(b => [
+      b.id,
+      `"${b.title.replace(/"/g, '""')}"`,
+      b.severity,
+      b.environment,
+      b.status,
+      `"${b.assignedTo || 'Unassigned'}"`,
+      `"${b.reportedBy}"`,
+      b.createdAt
+    ])
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `accesscore-defects-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${filteredBugs.length} defects to CSV`)
+  }
+
+  const handleCopyBrief = (bug) => {
+    const text = `[${bug.id}] ${bug.title} | ${bug.severity} | ${bug.environment} | Status: ${BUG_STATUS_LABELS[bug.status]}`
+    navigator.clipboard?.writeText(text)
+    setCopiedBrief(true)
+    toast.success('Defect brief copied to clipboard')
+    setTimeout(() => setCopiedBrief(false), 2000)
+  }
 
   // Report Form State
   const [formData, setFormData] = useState({
@@ -165,6 +198,16 @@ export default function BugsPage() {
             {BUG_ENVIRONMENTS.map(env => <option key={env} value={env}>{env}</option>)}
           </select>
 
+          <Button
+            variant="outline"
+            size="sm"
+            iconLeft={<Download size={13} />}
+            onClick={exportBugsCsv}
+            title="Export filtered defects to CSV"
+          >
+            Export CSV
+          </Button>
+
           {(search || severityFilter || statusFilter || envFilter) && (
             <button
               onClick={() => { setSearch(''); setSeverityFilter(''); setStatusFilter(''); setEnvFilter('') }}
@@ -298,16 +341,26 @@ export default function BugsPage() {
         >
           <div className="space-y-4">
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <Badge color={BUG_SEVERITY_COLORS[selectedBug.severity]} dot>
-                  {selectedBug.severity}
-                </Badge>
-                <Badge color={BUG_STATUS_COLORS[selectedBug.status]}>
-                  {BUG_STATUS_LABELS[selectedBug.status]}
-                </Badge>
-                <span className="text-xs font-mono text-slate-400">
-                  Env: {selectedBug.environment}
-                </span>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge color={BUG_SEVERITY_COLORS[selectedBug.severity]} dot>
+                    {selectedBug.severity}
+                  </Badge>
+                  <Badge color={BUG_STATUS_COLORS[selectedBug.status]}>
+                    {BUG_STATUS_LABELS[selectedBug.status]}
+                  </Badge>
+                  <span className="text-xs font-mono text-slate-400">
+                    Env: {selectedBug.environment}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCopyBrief(selectedBug)}
+                  className="text-xs text-[#6D4AFF] hover:underline flex items-center gap-1 font-medium"
+                  title="Copy defect summary"
+                >
+                  {copiedBrief ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                  {copiedBrief ? 'Copied Brief' : 'Copy Brief'}
+                </button>
               </div>
               <h3 className="text-sm font-semibold text-[#1E293B]">
                 {selectedBug.title}
@@ -343,6 +396,22 @@ export default function BugsPage() {
                   </p>
                 </div>
               </div>
+
+              {selectedBug.attachments && selectedBug.attachments.length > 0 && (
+                <div className="pt-2 border-t border-slate-200">
+                  <span className="font-semibold text-slate-700 block mb-1.5 flex items-center gap-1">
+                    <Paperclip size={12} className="text-slate-400" /> Attached Telemetry & Traces ({selectedBug.attachments.length})
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedBug.attachments.map(att => (
+                      <span key={att} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white border border-[#EDE8FA] font-mono text-[10px] text-slate-700 shadow-xs">
+                        <Paperclip size={10} className="text-[#6D4AFF]" />
+                        {att}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Developer Assignment Picker */}
