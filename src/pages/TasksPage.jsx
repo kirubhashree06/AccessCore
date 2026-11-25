@@ -19,6 +19,13 @@ import {
 } from '../data/tasksData'
 import { formatDate } from '../utils/helpers'
 
+const COLUMN_WIP_LIMITS = {
+  TODO: 10,
+  IN_PROGRESS: 5,
+  REVIEW: 4,
+  COMPLETED: 50,
+}
+
 const getDueDateBadge = (dueDate, status) => {
   if (status === 'COMPLETED') return { label: 'Resolved', color: 'green' }
   const todayStr = '2026-11-25'
@@ -217,7 +224,17 @@ export default function TasksPage() {
                       {columnTasks.length}
                     </span>
                   </div>
-                  <Badge color={TASK_STATUS_COLORS[statusKey]} dot />
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn(
+                      "text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold",
+                      columnTasks.length >= (COLUMN_WIP_LIMITS[statusKey] || 99)
+                        ? "bg-amber-100 text-amber-700 border border-amber-300"
+                        : "bg-white text-slate-400 border border-[#EDE8FA]"
+                    )}>
+                      WIP {columnTasks.length}/{COLUMN_WIP_LIMITS[statusKey]}
+                    </span>
+                    <Badge color={TASK_STATUS_COLORS[statusKey]} dot />
+                  </div>
                 </div>
 
                 {/* Cards Container */}
@@ -274,6 +291,21 @@ export default function TasksPage() {
                           <Badge color={getDueDateBadge(task.dueDate, task.status).color} className="text-[9px] px-1 py-0.2">
                             {getDueDateBadge(task.dueDate, task.status).label}
                           </Badge>
+                          {(TASK_TRANSITIONS[task.status] || []).length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const nextState = TASK_TRANSITIONS[task.status][0]
+                                changeTaskStatus(task.id, nextState)
+                                toast.success(`${task.id} advanced to ${TASK_STATUS_LABELS[nextState] || nextState}`)
+                              }}
+                              className="p-1 rounded bg-[#F4F2FF] hover:bg-[#EDE8FF] text-[#6D4AFF] border border-[#DDD6FE] transition-colors cursor-pointer"
+                              title={`Advance to ${TASK_STATUS_LABELS[TASK_TRANSITIONS[task.status][0]]}`}
+                            >
+                              <ArrowRight size={10} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </motion.div>
