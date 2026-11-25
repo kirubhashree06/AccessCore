@@ -17,13 +17,20 @@ import {
   TASK_STATUSES, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
   TASK_PRIORITIES, TASK_PRIORITY_COLORS, TASK_TRANSITIONS
 } from '../data/tasksData'
-import { formatDate } from '../utils/helpers'
+import { formatDate, cn } from '../utils/helpers'
 
 const COLUMN_WIP_LIMITS = {
   TODO: 10,
   IN_PROGRESS: 5,
   REVIEW: 4,
   COMPLETED: 50,
+}
+
+const PRIORITY_WEIGHTS = {
+  Urgent: 4,
+  High: 3,
+  Medium: 2,
+  Low: 1,
 }
 
 const getDueDateBadge = (dueDate, status) => {
@@ -52,6 +59,7 @@ export default function TasksPage() {
   const [search, setSearch] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sortByPriority, setSortByPriority] = useState(true)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
@@ -61,7 +69,7 @@ export default function TasksPage() {
   const [formData, setFormData] = useState(getInitialTaskForm)
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+    const list = tasks.filter(task => {
       const matchSearch =
         task.title.toLowerCase().includes(search.toLowerCase()) ||
         task.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -70,7 +78,12 @@ export default function TasksPage() {
       const matchStatus = statusFilter ? task.status === statusFilter : true
       return matchSearch && matchPriority && matchStatus
     })
-  }, [tasks, search, priorityFilter, statusFilter])
+
+    if (sortByPriority) {
+      return [...list].sort((a, b) => (PRIORITY_WEIGHTS[b.priority] || 0) - (PRIORITY_WEIGHTS[a.priority] || 0))
+    }
+    return list
+  }, [tasks, search, priorityFilter, statusFilter, sortByPriority])
 
   const handleCreateSubmit = (e) => {
     e.preventDefault()
@@ -172,6 +185,22 @@ export default function TasksPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Priority sorting toggle */}
+          <button
+            type="button"
+            onClick={() => setSortByPriority(s => !s)}
+            className={cn(
+              "h-8 px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5",
+              sortByPriority
+                ? "bg-[#6D4AFF] text-white border-[#6D4AFF] shadow-xs"
+                : "bg-white text-slate-700 border-[#EDE8FA] hover:text-[#6D4AFF]"
+            )}
+            title="Sort tasks by priority weight (Urgent first)"
+          >
+            <Filter size={12} />
+            <span className="hidden sm:inline">Priority Order: {sortByPriority ? 'ON' : 'OFF'}</span>
+          </button>
+
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
@@ -195,12 +224,41 @@ export default function TasksPage() {
           {(search || priorityFilter || statusFilter) && (
             <button
               onClick={() => { setSearch(''); setPriorityFilter(''); setStatusFilter('') }}
-              className="text-xs text-[#6D4AFF] hover:underline px-2"
+              className="text-xs text-[#6D4AFF] hover:underline px-2 cursor-pointer"
             >
               Reset
             </button>
           )}
         </div>
+      </div>
+
+      {/* Priority Matrix Overview Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Priority Matrix:</span>
+        {TASK_PRIORITIES.map(p => {
+          const pCount = tasks.filter(t => t.priority === p && t.status !== 'COMPLETED').length
+          const isActive = priorityFilter === p
+          return (
+            <button
+              key={p}
+              onClick={() => setPriorityFilter(curr => curr === p ? '' : p)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold border transition-all cursor-pointer shrink-0",
+                isActive
+                  ? "bg-[#6D4AFF] text-white border-[#6D4AFF] shadow-xs"
+                  : "bg-white text-slate-700 border-[#EDE8FA] hover:border-[#DDD6FE]"
+              )}
+            >
+              <span>{p}</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded-full text-[10px]",
+                isActive ? "bg-white/20 text-white" : "bg-[#F4F2FF] text-[#6D4AFF]"
+              )}>
+                {pCount}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* View Rendering */}
