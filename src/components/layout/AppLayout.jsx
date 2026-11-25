@@ -36,6 +36,12 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-[#F4F2FF] text-[#1E1B2E] transition-colors duration-150">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#6D4AFF] focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <Sidebar
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
@@ -44,7 +50,9 @@ export default function AppLayout() {
         onToggleMobileSidebar={() => setMobileSidebarOpen(o => !o)}
       />
       <main
-        className={cn( 'pt-[60px] min-h-screen transition-all duration-200' )}
+        id="main-content"
+        tabIndex={-1}
+        className={cn( 'pt-[60px] min-h-screen transition-all duration-200 outline-none' )}
         style={{
           marginLeft: isMobile ? 0 : (collapsed ? 68 : 240)
         }}
