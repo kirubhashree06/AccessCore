@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Obsidian Violet Color Palette */
+  --color-obsidian: #11111B;
+  --color-primary-violet: #6D4AFF;
+  --color-soft-violet: #A78BFA;
+  --color-bg-main: #F4F2FF;
+  --color-card-bg: #FFFFFF;
+  --color-text-main: #1E1B2E;
+  --color-text-secondary: #64748B;
+  --color-border: #EDE8FA;
+
+  /* Aliases & Compatibility Tokens */
+  --color-sidebar: #11111B;
+  --color-sidebar-alt: #181824;
+  --color-sidebar-border: #1E1B2E;
+  --color-primary: #6D4AFF;
+  --color-primary-hover: #5B3CE6;
+  --color-secondary: #A78BFA;
+  --color-bg: #F4F2FF;
+  --color-card: #FFFFFF;
+  --color-deep-navy: #11111B;
+  --color-primary-blue: #6D4AFF;
+  --color-secondary-blue: #A78BFA;
+  --color-soft-blue: #F4F2FF;
+
+  /* Status Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-muted: #64748B;
+
+  /* Layout Dimensions */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 68px;
+  --topbar-height: 60px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #F4F2FF;
+  color: #1E1B2E;
+}
+
+/* Scrollbar styling with Soft Violet accents */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #DDD6FE;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A78BFA;
+}
+
+/* Focus ring in Primary Violet */
+:focus-visible {
+  outline: 2px solid #6D4AFF;
+  outline-offset: 2px;
+}
