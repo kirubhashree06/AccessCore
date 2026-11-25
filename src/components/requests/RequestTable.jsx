@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, ChevronUp, ChevronDown, Eye, Pencil, Ban,
-  ChevronLeft, ChevronRight, Filter, ArrowUpDown, Inbox
+  ChevronLeft, ChevronRight, Filter, ArrowUpDown, Inbox,
+  CheckSquare, Square, Download, SlidersHorizontal, Check, X
 } from 'lucide-react'
 import { cn, formatDate } from '../../utils/helpers'
 import { CATEGORIES, PRIORITIES, STATUSES } from '../../data/requestsData'
@@ -18,7 +19,7 @@ function SortIcon({ field, sortField, sortDir }) {
     : <ChevronDown size={13} className="text-[#6D4AFF] ml-1" />
 }
 
-function FilterBar({ search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, categoryFilter, setCategoryFilter }) {
+function FilterBar({ search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, categoryFilter, setCategoryFilter, density, setDensity }) {
   return (
     <div className="flex flex-wrap gap-2 items-center">
       {/* Search */}
@@ -62,11 +63,22 @@ function FilterBar({ search, setSearch, statusFilter, setStatusFilter, priorityF
         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
       </select>
 
+      {/* Row Density Mode Toggle */}
+      <button
+        type="button"
+        onClick={() => setDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
+        className="h-9 px-2.5 rounded-lg border border-[#EDE8FA] bg-white text-xs text-[#1E293B] hover:text-[#6D4AFF] flex items-center gap-1.5 transition-colors cursor-pointer"
+        title="Toggle table row density"
+      >
+        <SlidersHorizontal size={13} className="text-[#6D4AFF]" />
+        <span className="hidden sm:inline capitalize font-medium">{density}</span>
+      </button>
+
       {/* Clear filters button */}
       {(search || statusFilter || priorityFilter || categoryFilter) && (
         <button
           onClick={() => { setSearch(''); setStatusFilter(''); setPriorityFilter(''); setCategoryFilter('') }}
-          className="h-9 px-2.5 text-xs text-slate-500 hover:text-[#6D4AFF] transition-colors"
+          className="h-9 px-2.5 text-xs text-slate-500 hover:text-[#6D4AFF] transition-colors cursor-pointer"
         >
           Reset filters
         </button>
@@ -83,6 +95,8 @@ export default function RequestTable({ requests, onView, onEdit, onCancel }) {
   const [sortField, setSortField] = useState('createdAt')
   const [sortDir, setSortDir] = useState('desc')
   const [page, setPage] = useState(1)
+  const [density, setDensity] = useState('comfortable')
+  const [selectedIds, setSelectedIds] = useState([])
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -124,10 +138,58 @@ export default function RequestTable({ requests, onView, onEdit, onCancel }) {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
+  const isAllPageSelected = paginated.length > 0 && paginated.every(r => selectedIds.includes(r.id))
+
+  const handleToggleSelectAll = () => {
+    if (isAllPageSelected) {
+      const pageIds = paginated.map(r => r.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const pageIds = paginated.map(r => r.id)
+      setSelectedIds(prev => [...new Set([...prev, ...pageIds])])
+    }
+  }
+
+  const handleToggleSelectRow = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleExportSelected = () => {
+    const selectedRequests = requests.filter(r => selectedIds.includes(r.id))
+    if (!selectedRequests.length) return
+    const headers = ['ID', 'Title', 'Category', 'Priority', 'Status', 'Department', 'CreatedBy', 'AssignedTo', 'CreatedAt']
+    const rows = selectedRequests.map(r => [
+      r.id,
+      `"${(r.title || '').replace(/"/g, '""')}"`,
+      r.category,
+      r.priority,
+      r.status,
+      r.department,
+      `"${(r.createdBy || '').replace(/"/g, '""')}"`,
+      `"${(r.assignedTo || '').replace(/"/g, '""')}"`,
+      r.createdAt,
+    ])
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `accesscore-selected-requests-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const cellPadding = density === 'compact' ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'
+
   const th = (label, field) => (
     <th
       onClick={() => handleSort(field)}
-      className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#1E293B] cursor-pointer select-none hover:text-[#6D4AFF] transition-colors whitespace-nowrap"
+      className={cn(
+        'text-left text-[11px] font-bold uppercase tracking-wider text-[#1E293B] cursor-pointer select-none hover:text-[#6D4AFF] transition-colors whitespace-nowrap',
+        density === 'compact' ? 'px-3 py-2' : 'px-4 py-3'
+      )}
     >
       <div className="flex items-center">
         {label}
@@ -144,7 +206,41 @@ export default function RequestTable({ requests, onView, onEdit, onCancel }) {
         statusFilter={statusFilter} setStatusFilter={(v) => { setStatusFilter(v); setPage(1) }}
         priorityFilter={priorityFilter} setPriorityFilter={(v) => { setPriorityFilter(v); setPage(1) }}
         categoryFilter={categoryFilter} setCategoryFilter={(v) => { setCategoryFilter(v); setPage(1) }}
+        density={density} setDensity={setDensity}
       />
+
+      {/* Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className="flex items-center justify-between p-2.5 rounded-xl bg-[#F4F2FF] border border-[#DDD6FE] text-xs shadow-xs"
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#6D4AFF] bg-white px-2 py-0.5 rounded-md border border-[#DDD6FE]">
+              {selectedIds.length} Selected
+            </span>
+            <span className="text-slate-600 hidden sm:inline">Bulk actions available for selected records</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportSelected}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#6D4AFF] text-white font-semibold hover:bg-[#5B3CE6] transition-colors shadow-2xs cursor-pointer"
+            >
+              <Download size={13} />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#DDD6FE] text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              <X size={13} />
+              <span>Deselect All</span>
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Table */}
       <div className="rounded-xl border border-[#EDE8FA] overflow-hidden bg-white shadow-xs">
@@ -152,6 +248,16 @@ export default function RequestTable({ requests, onView, onEdit, onCancel }) {
           <table className="w-full text-sm">
             <thead className="border-b border-[#EDE8FA]">
               <tr className="bg-[#F8FAFC]">
+                <th className={cn('w-10 text-center', density === 'compact' ? 'px-2 py-2' : 'px-3 py-3')}>
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAll}
+                    className="text-slate-400 hover:text-[#6D4AFF] transition-colors cursor-pointer"
+                    title={isAllPageSelected ? 'Deselect all on page' : 'Select all on page'}
+                  >
+                    {isAllPageSelected ? <CheckSquare size={16} className="text-[#6D4AFF]" /> : <Square size={16} />}
+                  </button>
+                </th>
                 {th('ID', 'id')}
                 {th('Title', 'title')}
                 {th('Category', 'category')}
@@ -159,78 +265,93 @@ export default function RequestTable({ requests, onView, onEdit, onCancel }) {
                 {th('Status', 'status')}
                 {th('Assigned To', 'assignedTo')}
                 {th('Created', 'createdAt')}
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#1E293B] whitespace-nowrap">Actions</th>
+                <th className={cn('text-left text-[11px] font-bold uppercase tracking-wider text-[#1E293B] whitespace-nowrap', density === 'compact' ? 'px-3 py-2' : 'px-4 py-3')}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EDE8FA]/60">
               <AnimatePresence mode="popLayout">
                 {paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-16 text-center">
+                    <td colSpan={9} className="py-16 text-center">
                       <Inbox size={32} className="mx-auto mb-3 text-purple-300" />
                       <p className="text-sm font-semibold text-[#1E293B]">No requests found</p>
                       <p className="text-xs text-slate-500 mt-1">Try adjusting your search or filters</p>
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((req, i) => (
-                    <motion.tr
-                      key={req.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15, delay: i * 0.03 }}
-                      className="hover:bg-[#F4F2FF]/50 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-[#6D4AFF] font-bold whitespace-nowrap">
-                        {req.id}
-                      </td>
-                      <td className="px-4 py-3 max-w-[220px]">
-                        <p className="font-semibold text-[#1E293B] truncate" title={req.title}>
-                          {req.title}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">{req.department}</p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{req.category}</td>
-                      <td className="px-4 py-3 whitespace-nowrap"><PriorityBadge priority={req.priority} /></td>
-                      <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={req.status} /></td>
-                      <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">
-                        {req.assignedTo || <span className="text-slate-400 italic">Unassigned</span>}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                        {formatDate(req.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
+                  paginated.map((req, i) => {
+                    const isSelected = selectedIds.includes(req.id)
+                    return (
+                      <motion.tr
+                        key={req.id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, delay: i * 0.03 }}
+                        className={cn(
+                          'transition-colors',
+                          isSelected ? 'bg-[#F4F2FF]' : 'hover:bg-[#F4F2FF]/50'
+                        )}
+                      >
+                        <td className={cn('text-center', density === 'compact' ? 'px-2 py-2' : 'px-3 py-3')}>
                           <button
-                            onClick={() => onView(req)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#6D4AFF] hover:bg-[#F4F2FF] transition-colors"
-                            title="View details"
+                            type="button"
+                            onClick={() => handleToggleSelectRow(req.id)}
+                            className="text-slate-400 hover:text-[#6D4AFF] transition-colors cursor-pointer"
                           >
-                            <Eye size={15} />
+                            {isSelected ? <CheckSquare size={16} className="text-[#6D4AFF]" /> : <Square size={16} />}
                           </button>
-                          {!['Closed', 'Rejected', 'Cancelled', 'Resolved'].includes(req.status) && (
+                        </td>
+                        <td className={cn('font-mono font-bold text-[#6D4AFF] whitespace-nowrap', cellPadding)}>
+                          {req.id}
+                        </td>
+                        <td className={cn('max-w-[220px]', cellPadding)}>
+                          <p className="font-semibold text-[#1E293B] truncate" title={req.title}>
+                            {req.title}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">{req.department}</p>
+                        </td>
+                        <td className={cn('text-slate-600 whitespace-nowrap', cellPadding)}>{req.category}</td>
+                        <td className={cn('whitespace-nowrap', cellPadding)}><PriorityBadge priority={req.priority} /></td>
+                        <td className={cn('whitespace-nowrap', cellPadding)}><StatusBadge status={req.status} /></td>
+                        <td className={cn('text-slate-600 whitespace-nowrap', cellPadding)}>
+                          {req.assignedTo || <span className="text-slate-400 italic">Unassigned</span>}
+                        </td>
+                        <td className={cn('text-slate-500 whitespace-nowrap', cellPadding)}>
+                          {formatDate(req.createdAt)}
+                        </td>
+                        <td className={cellPadding}>
+                          <div className="flex items-center gap-1">
                             <button
-                              onClick={() => onEdit(req)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                              title="Edit request"
+                              onClick={() => onView(req)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-[#6D4AFF] hover:bg-[#F4F2FF] transition-colors cursor-pointer"
+                              title="View details"
                             >
-                              <Pencil size={15} />
+                              <Eye size={15} />
                             </button>
-                          )}
-                          {!['Closed', 'Rejected', 'Cancelled', 'Resolved'].includes(req.status) && (
-                            <button
-                              onClick={() => onCancel(req)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              title="Cancel request"
-                            >
-                              <Ban size={15} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
+                            {!['Closed', 'Rejected', 'Cancelled', 'Resolved'].includes(req.status) && (
+                              <button
+                                onClick={() => onEdit(req)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                                title="Edit request"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            )}
+                            {!['Closed', 'Rejected', 'Cancelled', 'Resolved'].includes(req.status) && (
+                              <button
+                                onClick={() => onCancel(req)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                title="Cancel request"
+                              >
+                                <Ban size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    )
+                  })
                 )}
               </AnimatePresence>
             </tbody>
