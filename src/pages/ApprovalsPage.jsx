@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle, XCircle, Clock, ShieldCheck,
-  Calendar, User, AlertTriangle, ArrowRight, FileText, Check, X
+  Calendar, User, AlertTriangle, ArrowRight, FileText, Check, X,
+  Search, Filter
 } from 'lucide-react'
 import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -20,13 +21,26 @@ export default function ApprovalsPage() {
   const { toasts, toast, dismiss } = useToast()
 
   const [activeTab, setActiveTab] = useState('PENDING')
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState('')
   const [selectedApproval, setSelectedApproval] = useState(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
 
   const filteredApprovals = useMemo(() => {
-    return approvals.filter(a => a.status === activeTab)
-  }, [approvals, activeTab])
+    return approvals.filter(a => {
+      const matchTab = a.status === activeTab
+      const matchSearch =
+        a.title.toLowerCase().includes(search.toLowerCase()) ||
+        a.id.toLowerCase().includes(search.toLowerCase()) ||
+        a.requestor.toLowerCase().includes(search.toLowerCase()) ||
+        (a.department && a.department.toLowerCase().includes(search.toLowerCase()))
+      const matchType = typeFilter ? a.type === typeFilter : true
+      const matchPriority = priorityFilter ? a.priority === priorityFilter : true
+      return matchTab && matchSearch && matchType && matchPriority
+    })
+  }, [approvals, activeTab, search, typeFilter, priorityFilter])
 
   const pendingCount = approvals.filter(a => a.status === 'PENDING').length
   const approvedCount = approvals.filter(a => a.status === 'APPROVED').length
@@ -99,6 +113,52 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
+      {/* Search and Filter Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#EDE8FA] shadow-xs">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by ID, title, requestor, dept..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-[#EDE8FA] bg-slate-50 text-[#1E293B] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#6D4AFF]"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="h-8 px-2.5 text-xs rounded-lg border border-[#EDE8FA] bg-white text-slate-700 focus:outline-none"
+          >
+            <option value="">All Categories</option>
+            {APPROVAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="h-8 px-2.5 text-xs rounded-lg border border-[#EDE8FA] bg-white text-slate-700 focus:outline-none"
+          >
+            <option value="">All Priorities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+
+          {(search || typeFilter || priorityFilter) && (
+            <button
+              onClick={() => { setSearch(''); setTypeFilter(''); setPriorityFilter('') }}
+              className="text-xs text-[#6D4AFF] hover:underline px-2"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Approvals Cards Feed */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredApprovals.map(approval => (
@@ -108,9 +168,16 @@ export default function ApprovalsPage() {
                 <span className="font-mono text-xs font-bold text-[#6D4AFF]">
                   {approval.id}
                 </span>
-                <Badge color={APPROVAL_STATUS_COLORS[approval.status]} dot>
-                  {approval.status}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  {approval.priority && (
+                    <Badge color={approval.priority === 'Critical' ? 'red' : approval.priority === 'High' ? 'amber' : 'blue'}>
+                      {approval.priority}
+                    </Badge>
+                  )}
+                  <Badge color={APPROVAL_STATUS_COLORS[approval.status]} dot>
+                    {approval.status}
+                  </Badge>
+                </div>
               </div>
 
               <div>
