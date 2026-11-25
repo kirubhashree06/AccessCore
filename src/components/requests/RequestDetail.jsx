@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Hash, Calendar, User, Users, Tag, Flag,
   Paperclip, MessageSquare, Send, ChevronDown, MoreHorizontal,
-  Pencil, Ban, RefreshCw, CheckCircle, Circle, AlertTriangle
+  Pencil, Ban, RefreshCw, CheckCircle, Circle, AlertTriangle,
+  Copy, Check, Download, Clock, Search
 } from 'lucide-react'
 import { cn, formatDate } from '../../utils/helpers'
 import { InfoRow, PriorityBadge, StatusBadge } from './RequestShared'
@@ -95,7 +96,68 @@ function StatusChanger({ request, onChangeStatus }) {
 export default function RequestDetail({ request, onBack, onEdit, onCancel, onChangeStatus, onAddComment }) {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [timelineSearch, setTimelineSearch] = useState('')
   const canEdit = !['Closed', 'Rejected', 'Cancelled', 'Resolved'].includes(request.status)
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(request.id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleExportSummary = () => {
+    const summary = `ACCESSCORE SERVICE REQUEST SUMMARY
+=========================================
+Request ID:    ${request.id}
+Title:         ${request.title}
+Status:        ${request.status}
+Priority:      ${request.priority}
+Category:      ${request.category}
+Department:    ${request.department}
+Created By:    ${request.createdBy}
+Assigned To:   ${request.assignedTo || 'Unassigned'}
+Created Date:  ${request.createdAt}
+Last Updated:  ${request.updatedAt}
+
+Description:
+${request.description}
+
+Attachments (${request.attachments.length}):
+${request.attachments.map(a => ` - ${a}`).join('\n') || ' None'}
+
+Activity Audit Log:
+${request.timeline.map(t => ` [${t.date}] ${t.actor}: ${t.note}`).join('\n')}
+`
+    const blob = new Blob([summary], { type: 'text/plain;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${request.id}-summary.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const slaTarget = useMemo(() => {
+    switch (request.priority) {
+      case 'Urgent': return '4 Hours SLA Target'
+      case 'High': return '24 Hours SLA Target'
+      case 'Medium': return '48 Hours SLA Target'
+      case 'Low': return '72 Hours SLA Target'
+      default: return '48 Hours SLA Target'
+    }
+  }, [request.priority])
+
+  const filteredTimeline = useMemo(() => {
+    const list = [...request.timeline].reverse()
+    if (!timelineSearch.trim()) return list
+    const q = timelineSearch.toLowerCase().trim()
+    return list.filter(item =>
+      (item.actor && item.actor.toLowerCase().includes(q)) ||
+      (item.note && item.note.toLowerCase().includes(q)) ||
+      (item.type && item.type.toLowerCase().includes(q))
+    )
+  }, [request.timeline, timelineSearch])
 
   const handleComment = async (e) => {
     e.preventDefault()
@@ -119,12 +181,15 @@ export default function RequestDetail({ request, onBack, onEdit, onCancel, onCha
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#6D4AFF] transition-colors font-semibold"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#6D4AFF] transition-colors font-semibold cursor-pointer"
         >
           <ArrowLeft size={15} />
           Back to My Requests
         </button>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" iconLeft={<Download size={13} />} onClick={handleExportSummary}>
+            Export Summary
+          </Button>
           <StatusChanger request={request} onChangeStatus={onChangeStatus} />
           {canEdit && (
             <Button variant="secondary" size="sm" iconLeft={<Pencil size={13} />} onClick={() => onEdit(request)}>
@@ -144,11 +209,21 @@ export default function RequestDetail({ request, onBack, onEdit, onCancel, onCha
         <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">
-              <span className="font-mono text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                {request.id}
-              </span>
+              <button
+                type="button"
+                onClick={handleCopyId}
+                className="flex items-center gap-1.5 font-mono text-xs font-bold text-[#6D4AFF] bg-[#F4F2FF] hover:bg-[#EDE8FF] px-2 py-0.5 rounded border border-[#DDD6FE] transition-colors cursor-pointer"
+                title="Click to copy Request ID"
+              >
+                <span>{request.id}</span>
+                {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+              </button>
               <PriorityBadge priority={request.priority} />
               <StatusBadge status={request.status} />
+              <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium ml-1">
+                <Clock size={11} className="text-[#6D4AFF]" />
+                {slaTarget}
+              </span>
             </div>
             <h2 className="text-base font-semibold text-slate-900 leading-snug">
               {request.title}
@@ -183,6 +258,9 @@ export default function RequestDetail({ request, onBack, onEdit, onCancel, onCha
               ? `${request.attachments.length} file${request.attachments.length > 1 ? 's' : ''}`
               : 'None'}
           </InfoRow>
+          <InfoRow label="SLA Policy">
+            <span className="text-xs text-slate-700 font-medium">{slaTarget}</span>
+          </InfoRow>
         </div>
 
         {/* Description */}
@@ -211,11 +289,29 @@ export default function RequestDetail({ request, onBack, onEdit, onCancel, onCha
 
       {/* Activity Timeline */}
       <Card>
-        <h3 className="text-sm font-semibold text-slate-800 mb-5">Activity Timeline</h3>
+        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <h3 className="text-sm font-semibold text-slate-800">
+            Activity Timeline <span className="text-xs text-slate-400 font-normal">({filteredTimeline.length})</span>
+          </h3>
+          <div className="relative w-44">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Filter audit events…"
+              value={timelineSearch}
+              onChange={e => setTimelineSearch(e.target.value)}
+              className="w-full h-7 pl-7 pr-2 rounded-lg border border-[#EDE8FA] bg-white text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#6D4AFF]"
+            />
+          </div>
+        </div>
         <div>
-          {[...request.timeline].reverse().map((item, idx, arr) => (
-            <TimelineItem key={item.id} item={item} isLast={idx === arr.length - 1} />
-          ))}
+          {filteredTimeline.length === 0 ? (
+            <p className="text-xs text-slate-400 py-4 text-center">No timeline events match &ldquo;{timelineSearch}&rdquo;</p>
+          ) : (
+            filteredTimeline.map((item, idx, arr) => (
+              <TimelineItem key={item.id} item={item} isLast={idx === arr.length - 1} />
+            ))
+          )}
         </div>
 
         {/* Add comment */}
