@@ -3,9 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Plus, Search, Mail, Phone, MapPin,
   Shield, CheckCircle2, XCircle, Edit, Trash2,
-  Calendar, Briefcase, Award, Filter, ArrowUpRight
+  Calendar, Briefcase, Award, Filter, ArrowUpRight, Download
 } from 'lucide-react'
-import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
@@ -24,6 +23,7 @@ export default function TeamPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [deptFilter, setDeptFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [selectedProfile, setSelectedProfile] = useState(null)
@@ -47,9 +47,36 @@ export default function TeamPage() {
         m.title.toLowerCase().includes(search.toLowerCase())
       const matchRole = roleFilter ? m.role === roleFilter : true
       const matchDept = deptFilter ? m.department === deptFilter : true
-      return matchSearch && matchRole && matchDept
+      const matchStatus = statusFilter ? m.status === statusFilter : true
+      return matchSearch && matchRole && matchDept && matchStatus
     })
-  }, [members, search, roleFilter, deptFilter])
+  }, [members, search, roleFilter, deptFilter, statusFilter])
+
+  const exportRosterCsv = () => {
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Department', 'Title', 'Status', 'Location', 'Active Requests', 'Active Tasks', 'Total Workload']
+    const rows = filteredMembers.map(m => [
+      m.id,
+      `"${m.name.replace(/"/g, '""')}"`,
+      m.email,
+      m.role,
+      `"${m.department}"`,
+      `"${m.title}"`,
+      m.status,
+      `"${m.location}"`,
+      m.assignedRequests || 0,
+      m.assignedTasks || 0,
+      (m.assignedRequests || 0) + (m.assignedTasks || 0)
+    ])
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `accesscore-team-roster-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${filteredMembers.length} team members to CSV`)
+  }
 
   const handleAddSubmit = (e) => {
     e.preventDefault()
@@ -161,9 +188,29 @@ export default function TeamPage() {
             {TEAM_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
 
-          {(search || roleFilter || deptFilter) && (
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-8 px-2.5 text-xs rounded-lg border border-[#EDE8FA] bg-white text-slate-700 focus:outline-none"
+          >
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            iconLeft={<Download size={13} />}
+            onClick={exportRosterCsv}
+            title="Export filtered roster to CSV"
+          >
+            Export CSV
+          </Button>
+
+          {(search || roleFilter || deptFilter || statusFilter) && (
             <button
-              onClick={() => { setSearch(''); setRoleFilter(''); setDeptFilter('') }}
+              onClick={() => { setSearch(''); setRoleFilter(''); setDeptFilter(''); setStatusFilter('') }}
               className="text-xs text-[#6D4AFF] hover:underline px-2"
             >
               Reset
@@ -182,6 +229,7 @@ export default function TeamPage() {
                 <th className="py-3 px-4">Department & Title</th>
                 <th className="py-3 px-4">Role</th>
                 <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Workload Capacity</th>
                 <th className="py-3 px-4">Location</th>
                 <th className="py-3 px-4">Tenure</th>
                 <th className="py-3 px-4 text-right">Actions</th>
@@ -225,6 +273,33 @@ export default function TeamPage() {
                         {member.status}
                       </Badge>
                     </span>
+                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {(() => {
+                      const totalLoad = (member.assignedRequests || 0) + (member.assignedTasks || 0)
+                      const pct = Math.min(100, Math.round((totalLoad / 12) * 100))
+                      const badgeColor = totalLoad >= 10 ? 'red' : totalLoad >= 6 ? 'amber' : 'green'
+                      const label = totalLoad >= 10 ? 'Heavy' : totalLoad >= 6 ? 'Moderate' : 'Optimal'
+                      return (
+                        <div className="w-32">
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="font-semibold text-slate-700">{totalLoad} items</span>
+                            <Badge color={badgeColor} size="xs">{label}</Badge>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                totalLoad >= 10 ? 'bg-red-500' : totalLoad >= 6 ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${Math.max(12, pct)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {member.assignedRequests || 0} req • {member.assignedTasks || 0} tasks
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="py-3 px-4 whitespace-nowrap text-slate-500">
                     {member.location}
