@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import {
-  BarChart2, Download, Calendar, Filter, TrendingUp,
-  FileSpreadsheet, ShieldCheck, CheckCircle2, AlertTriangle, Layers
+  Download, TrendingUp,
+  ShieldCheck, CheckCircle2, AlertTriangle, Layers
 } from 'lucide-react'
 import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Badge from '../components/ui/Badge'
 import { useRequests } from '../context/RequestsContext'
 import { useTasks } from '../context/TasksContext'
 import { useBugs } from '../context/BugsContext'
@@ -46,7 +44,7 @@ export default function ReportsPage() {
   const { requests = [] } = useRequests() || {}
   const { tasks = [] } = useTasks() || {}
   const { bugs = [] } = useBugs() || {}
-  const { approvals = [] } = useApprovals() || {}
+  const { approvals: _approvals = [] } = useApprovals() || {}
   const { toasts, toast, dismiss } = useToast()
 
   const [dateRange, setDateRange] = useState('Quarter')

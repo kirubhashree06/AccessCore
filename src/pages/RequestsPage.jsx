@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ClipboardList, Plus, Inbox, CheckCircle2,
-  Clock, BarChart2, Loader2
+  ClipboardList, Plus, Inbox, CheckCircle2, Loader2
 } from 'lucide-react'
 import { useRequests } from '../context/RequestsContext'
 import { useToast } from '../hooks/useToast'
-import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import ToastContainer from '../components/ui/Toast'
@@ -141,15 +139,6 @@ export default function RequestsPage() {
     { label: 'In Progress', key: 'inProgress', icon: Loader2, iconColor: 'text-amber-500', iconBg: 'bg-amber-50 ', filter: 'inprogress' },
     { label: 'Resolved / Closed', key: 'resolved', icon: CheckCircle2, iconColor: 'text-emerald-500', iconBg: 'bg-emerald-50 ', filter: 'resolved' },
   ]
-
-  // Map stat filter shortcuts to actual status values for the table
-  const resolvedStatusFilter = statusFilter === 'open'
-    ? '' // handled by passing requests filtered below
-    : statusFilter === 'inprogress'
-      ? 'In Progress'
-      : statusFilter === 'resolved'
-        ? 'Resolved'
-        : ''
 
   const tableRequests = statusFilter === 'open'
     ? requests.filter(r => ['New', 'Assigned', 'Reopened'].includes(r.status))
