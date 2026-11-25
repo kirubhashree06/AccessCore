@@ -1,10 +1,8 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Bell, Check, Trash2, CheckCircle2,
-  Clock, ShieldAlert, ArrowRight, Inbox, Filter
+  Check, Trash2, ArrowRight, Inbox, Search, CheckCheck
 } from 'lucide-react'
-import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { useNotifications } from '../context/NotificationsContext'
@@ -19,11 +17,29 @@ export default function NotificationsPage() {
   const { toasts, toast, dismiss } = useToast()
 
   const [activeCategory, setActiveCategory] = useState('All')
+  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [search, setSearch] = useState('')
 
   const filteredNotifications = useMemo(() => {
-    if (activeCategory === 'All') return notifications
-    return notifications.filter(n => n.category === activeCategory)
-  }, [notifications, activeCategory])
+    return notifications.filter(n => {
+      const matchCat = activeCategory === 'All' || n.category === activeCategory
+      const matchUnread = unreadOnly ? n.unread : true
+      const matchSearch =
+        n.title.toLowerCase().includes(search.toLowerCase()) ||
+        n.message.toLowerCase().includes(search.toLowerCase())
+      return matchCat && matchUnread && matchSearch
+    })
+  }, [notifications, activeCategory, unreadOnly, search])
+
+  const handleClearRead = () => {
+    const readItems = notifications.filter(n => !n.unread)
+    if (readItems.length === 0) {
+      toast.info('No read notifications to clear')
+      return
+    }
+    readItems.forEach(n => clearNotification(n.id))
+    toast.success(`Cleared ${readItems.length} read notifications`)
+  }
 
   return (
     <div className="space-y-5">
@@ -53,6 +69,18 @@ export default function NotificationsPage() {
             </Button>
           )}
 
+          {notifications.some(n => !n.unread) && (
+            <Button
+              variant="outline"
+              size="sm"
+              iconLeft={<CheckCheck size={14} />}
+              onClick={handleClearRead}
+              title="Clear all already read notifications"
+            >
+              Clear Read
+            </Button>
+          )}
+
           {notifications.length > 0 && (
             <Button
               variant="ghost"
@@ -65,6 +93,41 @@ export default function NotificationsPage() {
             >
               Clear All
             </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Search and Quick Filters */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#EDE8FA] shadow-xs">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search notifications..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-[#EDE8FA] bg-slate-50 text-[#1E293B] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#6D4AFF]"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUnreadOnly(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              unreadOnly
+                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                : 'bg-white border-[#EDE8FA] text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            Unread Only ({unreadCount})
+          </button>
+          {(search || unreadOnly) && (
+            <button
+              onClick={() => { setSearch(''); setUnreadOnly(false) }}
+              className="text-xs text-[#6D4AFF] hover:underline px-2"
+            >
+              Reset
+            </button>
           )}
         </div>
       </div>
