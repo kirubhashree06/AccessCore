@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckSquare, Plus, Search, Filter, Kanban, List,
-  Calendar, User, Clock, CheckCircle2,
-  Edit, Trash2, ArrowRight, MessageSquare, AlertTriangle
+  Calendar, User,
+  Edit, Trash2, ArrowRight, MessageSquare
 } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'

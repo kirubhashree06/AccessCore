@@ -2,13 +2,12 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, ChevronUp, ChevronDown, Eye, Pencil, Ban,
-  ChevronLeft, ChevronRight, Filter, ArrowUpDown, Inbox,
-  CheckSquare, Square, Download, SlidersHorizontal, Check, X
+  ChevronLeft, ChevronRight, ArrowUpDown, Inbox,
+  CheckSquare, Square, Download, SlidersHorizontal, X
 } from 'lucide-react'
 import { cn, formatDate } from '../../utils/helpers'
 import { CATEGORIES, PRIORITIES, STATUSES } from '../../data/requestsData'
 import { PriorityBadge, StatusBadge } from './RequestShared'
-import Button from '../ui/Button'
 
 const PAGE_SIZE = 7
 
